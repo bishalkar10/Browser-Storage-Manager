@@ -6,12 +6,12 @@
   "host_permissions": ["<all_urls>"],
   "description": "Easily view, edit, and delete Local Storage, Session Storage, and Cookies.",
   "icons": {
-    "16": "icon.svg",
-    "48": "icon.svg",
-    "128": "icon.svg"
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
   },
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "icon.svg"
+    "default_icon": "icon.png"
   }
 }

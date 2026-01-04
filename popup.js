@@ -10,8 +10,13 @@ const DOM_IDS = {
   TABLE_BODY: '#storageTable tbody',
   BTN_LOCAL: 'btn-local',
   BTN_SESSION: 'btn-session',
-  BTN_COOKIES: 'btn-cookies'
+  BTN_COOKIES: 'btn-cookies',
+  BTN_ADD: 'btn-add',
+  INPUT_KEY: 'add-key',
+  INPUT_VALUE: 'add-value'
 };
+
+let currentStorageType = STORAGE_TYPES.LOCAL;
 
 function isRestrictedUrl(url) {
   if (!url) return true;
@@ -82,7 +87,39 @@ async function handleRemove(type, key) {
   renderTable(type); // Refresh UI
 }
 
+
+
+async function handleAddItem() {
+  const keyInput = document.getElementById(DOM_IDS.INPUT_KEY);
+  const valueInput = document.getElementById(DOM_IDS.INPUT_VALUE);
+  const key = keyInput.value.trim();
+  const value = valueInput.value.trim();
+
+  if (!key) return; // Basic validation
+
+  // Use handleUpdate to set the item (it handles both insert and update)
+  await handleUpdate(currentStorageType, key, value);
+
+  // Clear inputs
+  keyInput.value = '';
+  valueInput.value = '';
+
+  // Refresh Table
+  renderTable(currentStorageType);
+}
+
 async function renderTable(type) {
+  currentStorageType = type;
+  
+  // Update Tab Styling
+  [DOM_IDS.BTN_LOCAL, DOM_IDS.BTN_SESSION, DOM_IDS.BTN_COOKIES].forEach(id => {
+    const btn = document.getElementById(id);
+    if (type === STORAGE_TYPES.LOCAL && id === DOM_IDS.BTN_LOCAL) btn.classList.add('active');
+    else if (type === STORAGE_TYPES.SESSION && id === DOM_IDS.BTN_SESSION) btn.classList.add('active');
+    else if (type === STORAGE_TYPES.COOKIES && id === DOM_IDS.BTN_COOKIES) btn.classList.add('active');
+    else btn.classList.remove('active');
+  });
+
   const data = await getData();
   const tbody = document.querySelector(DOM_IDS.TABLE_BODY);
   tbody.innerHTML = '';
@@ -124,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById(DOM_IDS.BTN_LOCAL).addEventListener('click', () => renderTable(STORAGE_TYPES.LOCAL));
   document.getElementById(DOM_IDS.BTN_SESSION).addEventListener('click', () => renderTable(STORAGE_TYPES.SESSION));
   document.getElementById(DOM_IDS.BTN_COOKIES).addEventListener('click', () => renderTable(STORAGE_TYPES.COOKIES));
+  document.getElementById(DOM_IDS.BTN_ADD).addEventListener('click', handleAddItem);
 
   // Initial Load
   renderTable(STORAGE_TYPES.LOCAL);
