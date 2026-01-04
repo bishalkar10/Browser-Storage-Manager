@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Browser Storage Manager",
+  "version": "1.0",
+  "permissions": ["storage", "cookies", "activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "description": "Easily view, edit, and delete Local Storage, Session Storage, and Cookies.",
+  "icons": {
+    "16": "icon.svg",
+    "48": "icon.svg",
+    "128": "icon.svg"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.svg"
+  }
+}
