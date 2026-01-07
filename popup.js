@@ -11,7 +11,8 @@ const DOM_IDS = {
   BTN_LOCAL: 'btn-local',
   BTN_SESSION: 'btn-session',
   BTN_COOKIES: 'btn-cookies',
-  BTN_ADD: 'btn-add',
+
+  ADD_FORM: 'add-form',
   INPUT_KEY: 'add-key',
   INPUT_VALUE: 'add-value'
 };
@@ -44,25 +45,44 @@ async function getData() {
   return { ...storage[0].result, cookies };
 }
 
-async function handleUpdate(type, key, newValue) {
+async function handleUpdate(type, oldKey, newKey, newValue) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || isRestrictedUrl(tab.url)) return;
 
+  if (oldKey && oldKey !== newKey) {
+    if (type === STORAGE_TYPES.COOKIES) {
+      await chrome.cookies.remove({ url: tab.url, name: oldKey });
+    } else {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (storageType, storageKey) => {
+          if (storageType === 'local') {
+            localStorage.removeItem(storageKey);
+          } else {
+            sessionStorage.removeItem(storageKey);
+          }
+        },
+        args: [type, oldKey]
+      });
+    }
+  }
+
   if (type === STORAGE_TYPES.COOKIES) {
-    await chrome.cookies.set({ url: tab.url, name: key, value: newValue });
+    await chrome.cookies.set({ url: tab.url, name: newKey, value: newValue });
   } else {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: (storageType, storageKey, storageValue) => {
-        if (storageType === 'local') { // String literal needed inside injected function scope
+        if (storageType === 'local') {
           localStorage.setItem(storageKey, storageValue);
         } else {
           sessionStorage.setItem(storageKey, storageValue);
         }
       },
-      args: [type, key, newValue]
+      args: [type, newKey, newValue]
     });
   }
+  renderTable(type);
 }
 
 async function handleRemove(type, key) {
@@ -75,7 +95,7 @@ async function handleRemove(type, key) {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: (storageType, storageKey) => {
-        if (storageType === STORAGE_TYPES.LOCAL) {
+        if (storageType === 'local') {
           localStorage.removeItem(storageKey);
         } else {
           sessionStorage.removeItem(storageKey);
@@ -89,7 +109,8 @@ async function handleRemove(type, key) {
 
 
 
-async function handleAddItem() {
+async function handleAddItem(e) {
+  if (e) e.preventDefault();
   const keyInput = document.getElementById(DOM_IDS.INPUT_KEY);
   const valueInput = document.getElementById(DOM_IDS.INPUT_VALUE);
   const key = keyInput.value.trim();
@@ -97,8 +118,8 @@ async function handleAddItem() {
 
   if (!key) return; // Basic validation
 
-  // Use handleUpdate to set the item (it handles both insert and update)
-  await handleUpdate(currentStorageType, key, value);
+  // Use handleUpdate to set the item (pass null for oldKey)
+  await handleUpdate(currentStorageType, null, key, value);
 
   // Clear inputs
   keyInput.value = '';
@@ -133,7 +154,11 @@ async function renderTable(type) {
     
     // Key Column
     const tdKey = document.createElement('td');
-    tdKey.textContent = item.key;
+    const inputKey = document.createElement('input');
+    inputKey.type = 'text';
+    inputKey.value = item.key;
+    inputKey.addEventListener('change', (e) => handleUpdate(type, item.key, e.target.value, item.value));
+    tdKey.appendChild(inputKey);
     tr.appendChild(tdKey);
     
     // Value Column
@@ -141,7 +166,7 @@ async function renderTable(type) {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = item.value;
-    input.addEventListener('change', (e) => handleUpdate(type, item.key, e.target.value));
+    input.addEventListener('change', (e) => handleUpdate(type, item.key, item.key, e.target.value));
     tdValue.appendChild(input);
     tr.appendChild(tdValue);
     
@@ -161,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById(DOM_IDS.BTN_LOCAL).addEventListener('click', () => renderTable(STORAGE_TYPES.LOCAL));
   document.getElementById(DOM_IDS.BTN_SESSION).addEventListener('click', () => renderTable(STORAGE_TYPES.SESSION));
   document.getElementById(DOM_IDS.BTN_COOKIES).addEventListener('click', () => renderTable(STORAGE_TYPES.COOKIES));
-  document.getElementById(DOM_IDS.BTN_ADD).addEventListener('click', handleAddItem);
+  document.getElementById(DOM_IDS.ADD_FORM).addEventListener('submit', handleAddItem);
 
   // Initial Load
   renderTable(STORAGE_TYPES.LOCAL);
